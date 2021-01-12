@@ -17,3 +17,7 @@ This is a combination of my [Global Vaccination](https://github.com/bennokress/S
 ## COVID-19 Local Incidence (Germany)
 Small Widget showing the 7-Day incidence data for 3 regions (Landkreise). Data comes from the [API]() of the [Robert Koch Institut](https://experience.arcgis.com/experience/478220a4c454480e823b17327b2bf1d4).
 <img src="Screenshots/COVID-19%20Local%20Incidence.png?raw=true" width="100%">
+
+## COVID-19 Dashboard
+Medium Widget showing a combination of my [Local Incidence](https://github.com/bennokress/Scriptable-Scripts#covid-19-local-incidence-germany), [Global Vaccination](https://github.com/bennokress/Scriptable-Scripts#covid-19-global-vaccination) and [Global Incidence](https://github.com/bennokress/Scriptable-Scripts#covid-19-global-incidence) widgets.
+<img src="Screenshots/COVID-19%20Dashboard.png?raw=true" width="100%">
