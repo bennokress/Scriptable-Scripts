@@ -38,8 +38,8 @@ let coordinates = {
 let localPopulation = {
     "FDB": 134_655,
     "A": 296_582,
-    "M": 1_482_420,
-    "BGL": 104_201
+    "M": 1_484_226,
+    "BGL": 105_929
 }
 
 let name = {
