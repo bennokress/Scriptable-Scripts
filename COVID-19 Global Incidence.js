@@ -185,7 +185,7 @@ function incidenceColor(incidenceValue) {
 
 function get7DayIncidence(country, requestedDate) {
     // Start Index = Date Difference to Today (defaults to today) offset by 1 (= yesterday/the day before, since JHU seems to report partial data throughout the day)
-    let startIndex = (requestedDate ? today.getDate() - requestedDate.getDate() : 0) + 1
+    let startIndex = (requestedDate ? daysBetween(requestedDate, today) : 0) + 1
 
     // Calculate daily new cases for the last 7 days
     let newDailyCases = []
@@ -248,7 +248,7 @@ function getLastJHUUpdate(country) {
 
 function relativeTimestamp(date) {
     let yesterday = new Date()
-    yesterday.setDate(today.getDate()-1)
+    yesterday.setDate(today.getDate() - 1)
 
     switch (formatter.string(date)) {
         case formatter.string(today):
@@ -294,6 +294,26 @@ async function loadGlobalCaseData(country) {
         }
     }
 }
+
+////////////////////////////////////////////////
+// Date Calculation ////////////////////////////
+////////////////////////////////////////////////
+// --> see stackoverflow.com/a/11252167/6333824
+
+function treatAsUTC(date) {
+    var result = new Date(date)
+    result.setMinutes(result.getMinutes() - result.getTimezoneOffset())
+    return result
+}
+
+function daysBetween(startDate, endDate) {
+    var millisecondsPerDay = 24 * 60 * 60 * 1000
+    return Math.round((treatAsUTC(endDate) - treatAsUTC(startDate)) / millisecondsPerDay)
+}
+
+////////////////////////////////////////////////
+// Debug ///////////////////////////////////////
+////////////////////////////////////////////////
 
 function debugLogRawData() {
     console.log("\n\n**Global Cases Data**\n")

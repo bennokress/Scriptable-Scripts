@@ -230,14 +230,14 @@ function getUpdateDictionary() {
 function getLastOWIDUpdate(country) {
     let lastUpdate = new Date(vaccinationData[country].last_updated_date)
     // Since vaccinations are always reported at the end of the day, we add 1 day here (data from yesterday = last update today)
-    lastUpdate.setDate(today.getDate()+1)
+    lastUpdate.setDate(lastUpdate.getDate() + 1)
     // If data gets reported before midnight, the last update should still be today instead of tomorrow.
     return lastUpdate.getTime() > today.getTime() ? today : lastUpdate
 }
 
 function relativeTimestamp(date) {
     let yesterday = new Date()
-    yesterday.setDate(today.getDate()-1)
+    yesterday.setDate(today.getDate() - 1)
 
     switch (formatter.string(date)) {
         case formatter.string(today):
@@ -287,6 +287,26 @@ async function loadVaccinationData(country) {
         }
     }
 }
+
+////////////////////////////////////////////////
+// Date Calculation ////////////////////////////
+////////////////////////////////////////////////
+// --> see stackoverflow.com/a/11252167/6333824
+
+function treatAsUTC(date) {
+    var result = new Date(date)
+    result.setMinutes(result.getMinutes() - result.getTimezoneOffset())
+    return result
+}
+
+function daysBetween(startDate, endDate) {
+    var millisecondsPerDay = 24 * 60 * 60 * 1000
+    return Math.round((treatAsUTC(endDate) - treatAsUTC(startDate)) / millisecondsPerDay)
+}
+
+////////////////////////////////////////////////
+// Debug ///////////////////////////////////////
+////////////////////////////////////////////////
 
 function debugLogRawData() {
     console.log("\n\n**Global Vaccination Data**\n")

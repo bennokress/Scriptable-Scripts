@@ -196,7 +196,7 @@ function incidenceColor(incidenceValue) {
 
 function getLocal7DayIncidence(location, requestedDate) {
     // Start Index = Date Difference to Today (defaults to today)
-    let startIndex = requestedDate ? today.getDate() - requestedDate.getDate() : 0
+    let startIndex = requestedDate ? daysBetween(requestedDate, today) : 0
 
     // Sum up daily new cases for the 7 days from the requested date (or today if none specified)
     let newWeeklyCases = localHistoryData[location].cases.slice(startIndex, startIndex + 7).reduce(sum)
@@ -258,14 +258,14 @@ function getRKIDateString(addDays) {
 function getLastRKIUpdate(location) {
     let lastUpdate = new Date(localHistoryData[location].last_updated_date)
     // Since incidence is always determined by looking at cases from the previous day, we add 1 day here.
-    lastUpdate.setDate(today.getDate()+1)
+    lastUpdate.setDate(lastUpdate.getDate() + 1)
     // If data gets reported before midnight, the last update should still be today instead of tomorrow.
     return lastUpdate.getTime() > today.getTime() ? today : lastUpdate
 }
 
 function relativeTimestamp(date) {
     let yesterday = new Date()
-    yesterday.setDate(today.getDate()-1)
+    yesterday.setDate(today.getDate() - 1)
 
     switch (formatter.string(date)) {
         case formatter.string(today):
@@ -353,6 +353,25 @@ async function loadLocalHistoryData(location) {
     }
 }
 
+////////////////////////////////////////////////
+// Date Calculation ////////////////////////////
+////////////////////////////////////////////////
+// --> see stackoverflow.com/a/11252167/6333824
+
+function treatAsUTC(date) {
+    var result = new Date(date)
+    result.setMinutes(result.getMinutes() - result.getTimezoneOffset())
+    return result
+}
+
+function daysBetween(startDate, endDate) {
+    var millisecondsPerDay = 24 * 60 * 60 * 1000
+    return Math.round((treatAsUTC(endDate) - treatAsUTC(startDate)) / millisecondsPerDay)
+}
+
+////////////////////////////////////////////////
+// Debug ///////////////////////////////////////
+////////////////////////////////////////////////
 
 function debugLogRawData() {
     console.log("\n\n**Local Cases Data**\n")
