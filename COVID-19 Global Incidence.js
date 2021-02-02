@@ -184,18 +184,11 @@ function incidenceColor(incidenceValue) {
 }
 
 function get7DayIncidence(country, requestedDate) {
-    // Start Index = Date Difference to Today (defaults to today) offset by 1 (= yesterday/the day before, since JHU seems to report partial data throughout the day)
-    let startIndex = (requestedDate ? daysBetween(requestedDate, today) : 0) + 1
+    // Start Index = Date Difference to Today (defaults to today)
+    let startIndex = requestedDate ? daysBetween(requestedDate, today) : 0
 
-    // Calculate daily new cases for the last 7 days
-    let newDailyCases = []
-    for (i=startIndex; newDailyCases.length < 7; i++) {
-        let newCaseCount = globalCaseData[country][i].cases - globalCaseData[country][i+1].cases
-        newDailyCases.push(newCaseCount)
-    }
-
-    // 7 Day Incidence is defined as the sum of the new cases of last week divided by the countryPopulation count multiplied by 100.000
-    let newWeeklyCases = newDailyCases.reduce(sum)
+    // Sum up daily new cases for the 7 days from the requested date (or today if none specified)
+    let newWeeklyCases = globalCaseData[country].cases.slice(startIndex, startIndex + 7).reduce(sum)
     return 100_000 * (newWeeklyCases / countryPopulation[country])
 }
 
@@ -241,7 +234,9 @@ function getTendency(country, accuracy, longTimeAccuracy) {
 }
 
 function getLastJHUUpdate(country) {
-    let lastUpdate = new Date(globalCaseData[country][0].last_update)
+    let lastUpdate = new Date(globalCaseData[country].last_updated_date)
+    // Since incidence is always determined by looking at cases from the previous day, we add 1 day here.
+    lastUpdate.setDate(lastUpdate.getDate() + 1)
     // If data gets reported before midnight in our time zone, the last update should still show today instead of tomorrow.
     return lastUpdate.getTime() > today.getTime() ? today : lastUpdate
 }
@@ -266,7 +261,7 @@ function sum(a, b) {
 
 ////////////////////////////////////////////////
 // Networking //////////////////////////////////
-////////////////////////////////////////////////
+////////////////////////////////////////////////    
 async function loadGlobalCaseData(country) {
     let files = FileManager.local()
     let cachePath = files.joinPath(files.cacheDirectory(), "api-cache-global-cases-" + country)
@@ -280,8 +275,23 @@ async function loadGlobalCaseData(country) {
             globalCaseData[country] = JSON.parse(files.readString(cachePath))
         } else {
             console.log(country + " Case Data: Updating cached Data")
-            let response = await new Request('https://covid19-api.org/api/timeline/' + country).loadJSON()
-            globalCaseData[country] = response
+            let response = await new Request('https://corona.lmao.ninja/v2/historical/' + country + '?lastdays=40').loadJSON()
+
+            let activeCases = {}
+            let dates = []
+            for (var entry in response.timeline.cases) {
+                let date = new Date(entry)
+                dates.push(date.getTime())
+                activeCases[date.getTime()] = response.timeline.cases[entry]
+            }
+
+            let sortedKeys = dates.sort().reverse()
+            globalCaseData[country] = {}
+            globalCaseData[country]["cases"] = sortedKeys.map(date => activeCases[date] - activeCases[date - 24 * 60 * 60 * 1000]).slice(0,-1)
+
+            // Add Last Update of JHU Data to Dictionary
+            let lastJHUDataUpdate = treatAsUTC(new Date(parseInt(sortedKeys[0]))).toISOString()
+            globalCaseData[country]["last_updated_date"] = lastJHUDataUpdate
             files.writeString(cachePath, JSON.stringify(globalCaseData[country]))
         }
     } catch (error) {
