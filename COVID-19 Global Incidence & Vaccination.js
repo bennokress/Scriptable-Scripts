@@ -23,6 +23,8 @@ let padding = 14
 let barWidth = smallWidgetWidth - 2 * padding
 let barHeight = 3
 
+let showFirstAndSecondVaccinationOnProgressBar = true
+
 let country = {
     germany: "DEU",
     canada: "CAN",
@@ -161,7 +163,7 @@ function displayPercentage(canvas, country) {
     percentageContainer.size = new Size(50, 0)
     percentageContainer.layoutHorizontally()
     percentageContainer.addSpacer()
-    let vaccinationPercentage = vaccinationData[country].total_vaccinations_per_hundred
+    let vaccinationPercentage = vaccinationData[country].people_fully_vaccinated_per_hundred
     let percentageLabel = percentageContainer.addText(vaccinationPercentage.toFixed(1) + "%")
     percentageLabel.font = Font.mediumRoundedSystemFont(13)
     percentageLabel.minimumScaleFactor = 0.8
@@ -170,13 +172,14 @@ function displayPercentage(canvas, country) {
 
 // Vaccination Progress Bar ////////////////////
 function displayProgressBar(canvas, country) {
-    let vaccinationPercentage = vaccinationData[country].total_vaccinations_per_hundred
-    let progressBar = canvas.addImage(drawProgressBar(vaccinationPercentage))
+    let firstVaccinationPercentage = vaccinationData[country].people_vaccinated_per_hundred
+    let vaccinationPercentage = vaccinationData[country].people_fully_vaccinated_per_hundred
+    let progressBar = canvas.addImage(drawProgressBar(firstVaccinationPercentage, vaccinationPercentage))
     progressBar.cornerRadius = barHeight / 2
 }
 
 // Progress Bar Creation ///////////////////////
-function drawProgressBar(percentage) {
+function drawProgressBar(firstVaccinationPercentage, fullVaccinationPercentage) {
     // Total Vaccination Target in Percent
     let target = {
         good: 60,
@@ -190,27 +193,41 @@ function drawProgressBar(percentage) {
     canvas.respectScreenScale = true
 
     // Bar Container
-    canvas.setFillColor(Color.gray())
+    canvas.setFillColor(Color.dynamic(Color.darkGray(), Color.lightGray()))
     let bar = new Path()
     let backgroundRect = new Rect(0, 0, barWidth, barHeight)
     bar.addRect(backgroundRect)
     canvas.addPath(bar)
     canvas.fillPath()
 
+    if (showFirstAndSecondVaccinationOnProgressBar) {
+        // Progress Bar Color for first vaccination
+        let firstVaccinationColor = Color.dynamic(Color.lightGray(), Color.darkGray())
+
+        // First Vaccination Progress Bar
+        canvas.setFillColor(firstVaccinationColor)
+        let firstVaccinationProgress = new Path()
+        let firstVaccinationQuotient = firstVaccinationPercentage / 100
+        let firstVaccinationProgressWidth = Math.min(barWidth, barWidth * firstVaccinationQuotient) // Makes breaking the scale impossible although barWidth * quotient should suffice
+        firstVaccinationProgress.addRect(new Rect(0, 0, firstVaccinationProgressWidth, barHeight))
+        canvas.addPath(firstVaccinationProgress)
+        canvas.fillPath()
+    }
+
     // Progress Bar Color depending on vaccination status
     let color
-    if (percentage >= target.perfect) {
+    if (fullVaccinationPercentage >= target.perfect) {
         color = Color.green()
-    } else if (percentage >= target.good) {
+    } else if (fullVaccinationPercentage >= target.good) {
         color = Color.orange()
     } else {
         color = Color.red()
     }
 
     // Progress Bar
-    canvas.setFillColor(color)  
+    canvas.setFillColor(color)
     let progress = new Path()
-    let quotient = percentage / 100
+    let quotient = fullVaccinationPercentage / 100
     let progressWidth = Math.min(barWidth, barWidth * quotient) // Makes breaking the scale impossible although barWidth * quotient should suffice
     progress.addRect(new Rect(0, 0, progressWidth, barHeight))
     canvas.addPath(progress)
