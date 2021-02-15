@@ -23,6 +23,28 @@ let formatter = new DateFormatter()
 formatter.locale = "en"
 formatter.dateFormat = "MMM d"
 
+// Local Configuration /////////////////////////
+let location = {
+    kissing: "FDB",
+    augsburg: "A",
+    munich: "M",
+    freilassing: "BGL"
+}
+
+let coordinates = {
+    "FDB": "48.294,10.969",
+    "A": "48.366,10.898",
+    "M": "48.135,11.613",
+    "BGL": "47.835,12.970" 
+}
+
+let name = {
+    "FDB": "Kissing",
+    "A": "Augsburg",
+    "M": "München",
+    "BGL": "Freilassing"
+}
+
 ////////////////////////////////////////////////
 // Disable Debug Logs in Production ////////////
 ////////////////////////////////////////////////
@@ -42,34 +64,6 @@ let today = new Date()
 // Local Case Data /////////////////////////////
 let localCaseData = {}
 let localHistoryData = {}
-
-let location = {
-    kissing: "FDB",
-    augsburg: "A",
-    munich: "M",
-    freilassing: "BGL"
-}
-
-let coordinates = {
-    "FDB": "48.294,10.969",
-    "A": "48.366,10.898",
-    "M": "48.135,11.613",
-    "BGL": "47.835,12.970" 
-}
-
-let localPopulation = {
-    "FDB": 134_655,
-    "A": 296_582,
-    "M": 1_484_226,
-    "BGL": 105_929
-}
-
-let name = {
-    "FDB": "Kissing",
-    "A": "Augsburg",
-    "M": "München",
-    "BGL": "Freilassing"
-}
 
 await loadLocalCaseData(location.kissing)
 await loadLocalCaseData(location.augsburg)
@@ -225,7 +219,8 @@ function getLocal7DayIncidence(location, requestedDate) {
 
     // Sum up daily new cases for the 7 days from the requested date (or today if none specified)
     let newWeeklyCases = localHistoryData[location].cases.slice(startIndex, startIndex + 7).reduce(sum)
-    return 100_000 * (newWeeklyCases / localPopulation[location])
+    let population = localCaseData[location].EWZ
+    return 100_000 * (newWeeklyCases / population)
 }
 
 function getLocalTendency(location, accuracy, longTimeAccuracy) {
@@ -325,8 +320,8 @@ async function loadLocalCaseData(location) {
             if (logCacheUpdateStatus) { console.log(location + " Case Data: Updating cached Data") }
             let coordinates = getCoordinates(location)
             if (logURLs) { console.log("\nURL: Cases " + name[location]) }
-            if (logURLs) { console.log('https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_Landkreisdaten/FeatureServer/0/query?where=1%3D1&outFields=RS,GEN,cases7_per_100k&geometry=' + coordinates.longitude.toFixed(3) + '%2C' + coordinates.latitude.toFixed(3) + '&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&returnGeometry=false&outSR=4326&f=json') }
-            let response = await new Request('https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_Landkreisdaten/FeatureServer/0/query?where=1%3D1&outFields=RS,GEN,cases7_per_100k&geometry=' + coordinates.longitude.toFixed(3) + '%2C' + coordinates.latitude.toFixed(3) + '&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&returnGeometry=false&outSR=4326&f=json').loadJSON()
+            if (logURLs) { console.log('https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_Landkreisdaten/FeatureServer/0/query?where=1%3D1&outFields=RS,GEN,cases7_per_100k,EWZ&geometry=' + coordinates.longitude.toFixed(3) + '%2C' + coordinates.latitude.toFixed(3) + '&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&returnGeometry=false&outSR=4326&f=json') }
+            let response = await new Request('https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_Landkreisdaten/FeatureServer/0/query?where=1%3D1&outFields=RS,GEN,cases7_per_100k,EWZ&geometry=' + coordinates.longitude.toFixed(3) + '%2C' + coordinates.latitude.toFixed(3) + '&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&returnGeometry=false&outSR=4326&f=json').loadJSON()
             localCaseData[location] = response.features[0].attributes
             files.writeString(cachePath, JSON.stringify(localCaseData[location]))
         }
