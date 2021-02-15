@@ -23,20 +23,16 @@ let padding = 14
 let barWidth = smallWidgetWidth - 2 * padding
 let barHeight = 3
 
-let formatter = new DateFormatter()
-formatter.locale = "en"
-formatter.dateFormat = "MMM d"
-
 let country = {
-    germany: "DE",
-    canada: "CA",
-    usa: "US"
+    germany: "DEU",
+    canada: "CAN",
+    usa: "USA"
 }
 
-let iso3Conversion = {
-    "DE": "DEU",
-    "CA": "CAN",
-    "US": "USA"
+let flag = {
+    "DEU": "🇩🇪",
+    "CAN": "🇨🇦",
+    "USA": "🇺🇸"
 }
 
 ////////////////////////////////////////////////
@@ -55,11 +51,9 @@ if (!debug) {
 ////////////////////////////////////////////////
 let today = new Date()
 
-let flag = {
-    "DE": "🇩🇪",
-    "CA": "🇨🇦",
-    "US": "🇺🇸"
-}
+let formatter = new DateFormatter()
+formatter.locale = "en"
+formatter.dateFormat = "MMM d"
 
 // Vaccination Data ////////////////////////////
 let vaccinationResponseMemoryCache
@@ -75,12 +69,6 @@ let globalCaseData = {}
 await loadGlobalCaseData(country.germany)
 await loadGlobalCaseData(country.canada)
 await loadGlobalCaseData(country.usa)
-
-let countryPopulation = {
-    "DE": 83_190_556,
-    "CA": 38_310_118,
-    "US": 330_967_801
-}
 
 ////////////////////////////////////////////////
 // Debug Execution - DO NOT MODIFY /////////////
@@ -290,7 +278,8 @@ function get7DayIncidence(country, requestedDate) {
 
     // Sum up daily new cases for the 7 days from the requested date (or today if none specified)
     let newWeeklyCases = globalCaseData[country].cases.slice(startIndex, startIndex + 7).reduce(sum)
-    return 100_000 * (newWeeklyCases / countryPopulation[country])
+    let population = vaccinationData[country].population
+    return 100_000 * (newWeeklyCases / population)
 }
 
 function getTendency(country, accuracy, longTimeAccuracy) {
@@ -388,10 +377,10 @@ async function loadVaccinationData(country) {
             if (logURLs) { console.log("\nURL: Vaccination " + country) }
             if (logURLs) { console.log('https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/latest/owid-covid-latest.json') }
             if (vaccinationResponseMemoryCache) {
-                vaccinationData[country] = vaccinationResponseMemoryCache[iso3Conversion[country]]
+                vaccinationData[country] = vaccinationResponseMemoryCache[country]
             } else {
                 let response = await new Request('https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/latest/owid-covid-latest.json').loadJSON()
-                vaccinationData[country] = response[iso3Conversion[country]]
+                vaccinationData[country] = response[country]
             }
             files.writeString(cachePath, JSON.stringify(vaccinationData[country]))
         }

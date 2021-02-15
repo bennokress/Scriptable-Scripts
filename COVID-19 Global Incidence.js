@@ -19,14 +19,22 @@ var temporaryLogging = true // if (temporaryLogging) { console.log("") }
 let cacheInvalidationInMinutes = 60
 let padding = 14
 
-let formatter = new DateFormatter()
-formatter.locale = "en"
-formatter.dateFormat = "MMM d"
-
 let country = {
-    germany: "DE",
-    canada: "CA",
-    usa: "US"
+    germany: "DEU",
+    canada: "CAN",
+    usa: "USA"
+}
+
+let flag = {
+    "DEU": "🇩🇪",
+    "CAN": "🇨🇦",
+    "USA": "🇺🇸"
+}
+
+let name = {
+    "DEU": "Germany",
+    "CAN": "Canada",
+    "USA": "USA"
 }
 
 ////////////////////////////////////////////////
@@ -45,17 +53,17 @@ if (!debug) {
 ////////////////////////////////////////////////
 let today = new Date()
 
-let flag = {
-    "DE": "🇩🇪",
-    "CA": "🇨🇦",
-    "US": "🇺🇸"
-}
+let formatter = new DateFormatter()
+formatter.locale = "en"
+formatter.dateFormat = "MMM d"
 
-let name = {
-    "DE": "Germany",
-    "CA": "Canada",
-    "US": "USA"
-}
+// Vaccination Data ////////////////////////////
+let vaccinationResponseMemoryCache
+let vaccinationData = {}
+
+await loadVaccinationData(country.germany)
+await loadVaccinationData(country.canada)
+await loadVaccinationData(country.usa)
 
 // Global Case Data ////////////////////////////
 let globalCaseData = {}
@@ -63,12 +71,6 @@ let globalCaseData = {}
 await loadGlobalCaseData(country.germany)
 await loadGlobalCaseData(country.canada)
 await loadGlobalCaseData(country.usa)
-
-let countryPopulation = {
-    "DE": 83_190_556,
-    "CA": 38_310_118,
-    "US": 330_967_801
-}
 
 ////////////////////////////////////////////////
 // Debug Execution - DO NOT MODIFY /////////////
@@ -214,7 +216,8 @@ function get7DayIncidence(country, requestedDate) {
 
     // Sum up daily new cases for the 7 days from the requested date (or today if none specified)
     let newWeeklyCases = globalCaseData[country].cases.slice(startIndex, startIndex + 7).reduce(sum)
-    return 100_000 * (newWeeklyCases / countryPopulation[country])
+    let population = vaccinationData[country].population
+    return 100_000 * (newWeeklyCases / population)
 }
 
 function getTendency(country, accuracy, longTimeAccuracy) {
@@ -287,6 +290,41 @@ function sum(a, b) {
 ////////////////////////////////////////////////
 // Networking //////////////////////////////////
 ////////////////////////////////////////////////
+async function loadVaccinationData(country) {
+    let files = FileManager.local()
+    let cacheName = debug ? ("debug-api-cache-ourworldindata-latest-" + country) : ("api-cache-ourworldindata-latest-" + country)
+    let cachePath = files.joinPath(files.cacheDirectory(), cacheName)
+    let cacheExists = files.fileExists(cachePath)
+    let cacheDate = cacheExists ? files.modificationDate(cachePath) : 0
+
+    try {
+        // Use Cache if available and last updated within specified `cacheInvalidationInMinutes
+        if (!debug && cacheExists && (today.getTime() - cacheDate.getTime()) < (cacheInvalidationInMinutes * 60 * 1000)) {
+            if (logCacheUpdateStatus) { console.log(country + " Vaccination Data: Using cached Data") }
+            vaccinationData[country] = JSON.parse(files.readString(cachePath))
+        } else {
+            if (logCacheUpdateStatus) { console.log(country + " Vaccination Data: Updating cached Data") }
+            if (logURLs) { console.log("\nURL: Vaccination " + country) }
+            if (logURLs) { console.log('https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/latest/owid-covid-latest.json') }
+            if (vaccinationResponseMemoryCache) {
+                vaccinationData[country] = vaccinationResponseMemoryCache[country]
+            } else {
+                let response = await new Request('https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/latest/owid-covid-latest.json').loadJSON()
+                vaccinationData[country] = response[country]
+            }
+            files.writeString(cachePath, JSON.stringify(vaccinationData[country]))
+        }
+    } catch (error) {
+        console.error(error)
+        if (cacheExists) {
+            if (logCacheUpdateStatus) { console.log(country + " Vaccination Data: Loading new Data failed, using cached as fallback") }
+            vaccinationData[country] = JSON.parse(files.readString(cachePath))
+        } else {
+            if (logCacheUpdateStatus) { console.log(country + " Vaccination Data: Loading new Data failed and no Cache found") }
+        }
+    }
+}
+
 async function loadGlobalCaseData(country) {
     let files = FileManager.local()
     let cacheName = debug ? ("debug-api-cache-global-cases-" + country) : ("api-cache-global-cases-" + country)
@@ -355,6 +393,8 @@ function daysBetween(startDate, endDate) {
 
 function printCache() {
     if (logCache) {
+        console.log("\n\n**Global Vaccination Data**\n")
+        console.log(JSON.stringify(vaccinationData, null, 2))
         console.log("\n\n**Global Cases Data**\n")
         console.log(JSON.stringify(globalCaseData, null, 2))
     }

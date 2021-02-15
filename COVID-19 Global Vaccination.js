@@ -23,20 +23,17 @@ let padding = 14
 let barWidth = smallWidgetWidth - 2 * padding
 let barHeight = 3
 
-let formatter = new DateFormatter()
-formatter.locale = "en"
-formatter.dateFormat = "MMM d"
 
 let country = {
-    germany: "DE",
-    canada: "CA",
-    usa: "US"
+    germany: "DEU",
+    canada: "CAN",
+    usa: "USA"
 }
 
-let iso3Conversion = {
-    "DE": "DEU",
-    "CA": "CAN",
-    "US": "USA"
+let flag = {
+    "DEU": "🇩🇪",
+    "CAN": "🇨🇦",
+    "USA": "🇺🇸"
 }
 
 ////////////////////////////////////////////////
@@ -55,11 +52,9 @@ if (!debug) {
 ////////////////////////////////////////////////
 let today = new Date()
 
-let flag = {
-    "DE": "🇩🇪",
-    "CA": "🇨🇦",
-    "US": "🇺🇸"
-}
+let formatter = new DateFormatter()
+formatter.locale = "en"
+formatter.dateFormat = "MMM d"
 
 // Vaccination Data ////////////////////////////
 let vaccinationResponseMemoryCache
@@ -298,10 +293,10 @@ async function loadVaccinationData(country) {
             if (logURLs) { console.log("\nURL: Vaccination " + country) }
             if (logURLs) { console.log('https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/latest/owid-covid-latest.json') }
             if (vaccinationResponseMemoryCache) {
-                vaccinationData[country] = vaccinationResponseMemoryCache[iso3Conversion[country]]
+                vaccinationData[country] = vaccinationResponseMemoryCache[country]
             } else {
                 let response = await new Request('https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/latest/owid-covid-latest.json').loadJSON()
-                vaccinationData[country] = response[iso3Conversion[country]]
+                vaccinationData[country] = response[country]
             }
             files.writeString(cachePath, JSON.stringify(vaccinationData[country]))
         }
