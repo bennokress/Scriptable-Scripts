@@ -3,6 +3,17 @@
 // icon-color: deep-green; icon-glyph: syringe;
 
 ////////////////////////////////////////////////
+// Debug ///////////////////////////////////////
+////////////////////////////////////////////////
+let debug = false
+
+// Fine tune Debug Mode by modifying specific variables below
+var logCache = true
+var logCacheUpdateStatus = true
+var logURLs = true
+var temporaryLogging = true // if (temporaryLogging) { console.log("") }
+
+////////////////////////////////////////////////
 // Configuration ///////////////////////////////
 ////////////////////////////////////////////////
 let cacheInvalidationInMinutes = 60
@@ -26,6 +37,17 @@ let iso3Conversion = {
     "DE": "DEU",
     "CA": "CAN",
     "US": "USA"
+}
+
+////////////////////////////////////////////////
+// Disable Debug Logs in Production ////////////
+////////////////////////////////////////////////
+
+if (!debug) {
+    logCache = false
+    logCacheUpdateStatus = false
+    logURLs = false
+    temporaryLogging = false
 }
 
 ////////////////////////////////////////////////
@@ -60,8 +82,11 @@ let countryPopulation = {
     "US": 330_967_801
 }
 
-// Uncomment the following line to log all the collected data at this point.
-debugLogRawData()
+////////////////////////////////////////////////
+// Debug Execution - DO NOT MODIFY /////////////
+////////////////////////////////////////////////
+
+printCache()
 
 ////////////////////////////////////////////////
 // Widget //////////////////////////////////////
@@ -348,17 +373,20 @@ function sum(a, b) {
 ////////////////////////////////////////////////
 async function loadVaccinationData(country) {
     let files = FileManager.local()
-    let cachePath = files.joinPath(files.cacheDirectory(), "api-cache-ourworldindata-latest-" + country)
+    let cacheName = debug ? ("debug-api-cache-ourworldindata-latest-" + country) : ("api-cache-ourworldindata-latest-" + country)
+    let cachePath = files.joinPath(files.cacheDirectory(), cacheName)
     let cacheExists = files.fileExists(cachePath)
     let cacheDate = cacheExists ? files.modificationDate(cachePath) : 0
 
     try {
         // Use Cache if available and last updated within specified `cacheInvalidationInMinutes
-        if (cacheExists && (today.getTime() - cacheDate.getTime()) < (cacheInvalidationInMinutes * 60 * 1000)) {
-            console.log(country + " Vaccination Data: Using cached Data")
+        if (!debug && cacheExists && (today.getTime() - cacheDate.getTime()) < (cacheInvalidationInMinutes * 60 * 1000)) {
+            if (logCacheUpdateStatus) { console.log(country + " Vaccination Data: Using cached Data") }
             vaccinationData[country] = JSON.parse(files.readString(cachePath))
         } else {
-            console.log(country + " Vaccination Data: Updating cached Data")
+            if (logCacheUpdateStatus) { console.log(country + " Vaccination Data: Updating cached Data") }
+            if (logURLs) { console.log("\nURL: Vaccination " + country) }
+            if (logURLs) { console.log('https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/latest/owid-covid-latest.json') }
             if (vaccinationResponseMemoryCache) {
                 vaccinationData[country] = vaccinationResponseMemoryCache[iso3Conversion[country]]
             } else {
@@ -370,27 +398,30 @@ async function loadVaccinationData(country) {
     } catch (error) {
         console.error(error)
         if (cacheExists) {
-            console.log(country + " Vaccination Data: Loading new Data failed, using cached as fallback")
+            if (logCacheUpdateStatus) { console.log(country + " Vaccination Data: Loading new Data failed, using cached as fallback") }
             vaccinationData[country] = JSON.parse(files.readString(cachePath))
         } else {
-            console.log(country + " Vaccination Data: Loading new Data failed and no Cache found")
+            if (logCacheUpdateStatus) { console.log(country + " Vaccination Data: Loading new Data failed and no Cache found") }
         }
     }
 }
 
 async function loadGlobalCaseData(country) {
     let files = FileManager.local()
-    let cachePath = files.joinPath(files.cacheDirectory(), "api-cache-global-cases-" + country)
+    let cacheName = debug ? ("debug-api-cache-global-cases-" + country) : ("api-cache-global-cases-" + country)
+    let cachePath = files.joinPath(files.cacheDirectory(), cacheName)
     let cacheExists = files.fileExists(cachePath)
     let cacheDate = cacheExists ? files.modificationDate(cachePath) : 0
 
     try {
         // Use Cache if available and last updated within specified `cacheInvalidationInMinutes
-        if (cacheExists && (today.getTime() - cacheDate.getTime()) < (cacheInvalidationInMinutes * 60 * 1000)) {
-            console.log(country + " Case Data: Using cached Data")
+        if (!debug && cacheExists && (today.getTime() - cacheDate.getTime()) < (cacheInvalidationInMinutes * 60 * 1000)) {
+            if (logCacheUpdateStatus) { console.log(country + " Case Data: Using cached Data") }
             globalCaseData[country] = JSON.parse(files.readString(cachePath))
         } else {
-            console.log(country + " Case Data: Updating cached Data")
+            if (logCacheUpdateStatus) { console.log(country + " Case Data: Updating cached Data") }
+            if (logURLs) { console.log("\nURL: Cases " + country) }
+            if (logURLs) { console.log('https://corona.lmao.ninja/v2/historical/' + country + '?lastdays=40') }
             let response = await new Request('https://corona.lmao.ninja/v2/historical/' + country + '?lastdays=40').loadJSON()
 
             let activeCases = {}
@@ -413,10 +444,10 @@ async function loadGlobalCaseData(country) {
     } catch (error) {
         console.error(error)
         if (cacheExists) {
-            console.log(country + " Case Data: Loading new Data failed, using cached as fallback")
+            if (logCacheUpdateStatus) { console.log(country + " Case Data: Loading new Data failed, using cached as fallback") }
             globalCaseData[country] = JSON.parse(files.readString(cachePath))
         } else {
-            console.log(country + " Case Data: Loading new Data failed and no Cache found")
+            if (logCacheUpdateStatus) { console.log(country + " Case Data: Loading new Data failed and no Cache found") }
         }
     }
 }
@@ -441,11 +472,13 @@ function daysBetween(startDate, endDate) {
 // Debug ///////////////////////////////////////
 ////////////////////////////////////////////////
 
-function debugLogRawData() {
-    console.log("\n\n**Global Vaccination Data**\n")
-    console.log(JSON.stringify(vaccinationData, null, 2))
-    console.log("\n\n**Global Cases Data**\n")
-    console.log(JSON.stringify(globalCaseData, null, 2))
+function printCache() {
+    if (logCache) {
+        console.log("\n\n**Global Vaccination Data**\n")
+        console.log(JSON.stringify(vaccinationData, null, 2))
+        console.log("\n\n**Global Cases Data**\n")
+        console.log(JSON.stringify(globalCaseData, null, 2))
+    }
 }
 
 

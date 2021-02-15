@@ -3,6 +3,17 @@
 // icon-color: deep-green; icon-glyph: chart-line;
 
 ////////////////////////////////////////////////
+// Debug ///////////////////////////////////////
+////////////////////////////////////////////////
+let debug = false
+
+// Fine tune Debug Mode by modifying specific variables below
+var logCache = true
+var logCacheUpdateStatus = true
+var logURLs = true
+var temporaryLogging = true // if (temporaryLogging) { console.log("") }
+
+////////////////////////////////////////////////
 // Configuration ///////////////////////////////
 ////////////////////////////////////////////////
 let cacheInvalidationInMinutes = 60
@@ -16,6 +27,17 @@ let country = {
     germany: "DE",
     canada: "CA",
     usa: "US"
+}
+
+////////////////////////////////////////////////
+// Disable Debug Logs in Production ////////////
+////////////////////////////////////////////////
+
+if (!debug) {
+    logCache = false
+    logCacheUpdateStatus = false
+    logURLs = false
+    temporaryLogging = false
 }
 
 ////////////////////////////////////////////////
@@ -48,8 +70,11 @@ let countryPopulation = {
     "US": 330_967_801
 }
 
-// Uncomment the following line to log all the collected data at this point.
-debugLogRawData()
+////////////////////////////////////////////////
+// Debug Execution - DO NOT MODIFY /////////////
+////////////////////////////////////////////////
+
+printCache()
 
 ////////////////////////////////////////////////
 // Widget //////////////////////////////////////
@@ -261,20 +286,23 @@ function sum(a, b) {
 
 ////////////////////////////////////////////////
 // Networking //////////////////////////////////
-////////////////////////////////////////////////    
+////////////////////////////////////////////////
 async function loadGlobalCaseData(country) {
     let files = FileManager.local()
-    let cachePath = files.joinPath(files.cacheDirectory(), "api-cache-global-cases-" + country)
+    let cacheName = debug ? ("debug-api-cache-global-cases-" + country) : ("api-cache-global-cases-" + country)
+    let cachePath = files.joinPath(files.cacheDirectory(), cacheName)
     let cacheExists = files.fileExists(cachePath)
     let cacheDate = cacheExists ? files.modificationDate(cachePath) : 0
 
     try {
         // Use Cache if available and last updated within specified `cacheInvalidationInMinutes
-        if (cacheExists && (today.getTime() - cacheDate.getTime()) < (cacheInvalidationInMinutes * 60 * 1000)) {
-            console.log(country + " Case Data: Using cached Data")
+        if (!debug && cacheExists && (today.getTime() - cacheDate.getTime()) < (cacheInvalidationInMinutes * 60 * 1000)) {
+            if (logCacheUpdateStatus) { console.log(country + " Case Data: Using cached Data") }
             globalCaseData[country] = JSON.parse(files.readString(cachePath))
         } else {
-            console.log(country + " Case Data: Updating cached Data")
+            if (logCacheUpdateStatus) { console.log(country + " Case Data: Updating cached Data") }
+            if (logURLs) { console.log("\nURL: Cases " + country) }
+            if (logURLs) { console.log('https://corona.lmao.ninja/v2/historical/' + country + '?lastdays=40') }
             let response = await new Request('https://corona.lmao.ninja/v2/historical/' + country + '?lastdays=40').loadJSON()
 
             let activeCases = {}
@@ -297,10 +325,10 @@ async function loadGlobalCaseData(country) {
     } catch (error) {
         console.error(error)
         if (cacheExists) {
-            console.log(country + " Case Data: Loading new Data failed, using cached as fallback")
+            if (logCacheUpdateStatus) { console.log(country + " Case Data: Loading new Data failed, using cached as fallback") }
             globalCaseData[country] = JSON.parse(files.readString(cachePath))
         } else {
-            console.log(country + " Case Data: Loading new Data failed and no Cache found")
+            if (logCacheUpdateStatus) { console.log(country + " Case Data: Loading new Data failed and no Cache found") }
         }
     }
 }
@@ -325,9 +353,11 @@ function daysBetween(startDate, endDate) {
 // Debug ///////////////////////////////////////
 ////////////////////////////////////////////////
 
-function debugLogRawData() {
-    console.log("\n\n**Global Cases Data**\n")
-    console.log(JSON.stringify(globalCaseData, null, 2))
+function printCache() {
+    if (logCache) {
+        console.log("\n\n**Global Cases Data**\n")
+        console.log(JSON.stringify(globalCaseData, null, 2))
+    }
 }
 
 

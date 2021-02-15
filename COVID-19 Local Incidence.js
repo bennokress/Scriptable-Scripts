@@ -3,6 +3,17 @@
 // icon-color: deep-green; icon-glyph: chart-line;
 
 ////////////////////////////////////////////////
+// Debug ///////////////////////////////////////
+////////////////////////////////////////////////
+let debug = false
+
+// Fine tune Debug Mode by modifying specific variables below
+var logCache = true
+var logCacheUpdateStatus = true
+var logURLs = true
+var temporaryLogging = true // if (temporaryLogging) { console.log("") }
+
+////////////////////////////////////////////////
 // Configuration ///////////////////////////////
 ////////////////////////////////////////////////
 let cacheInvalidationInMinutes = 60
@@ -11,6 +22,17 @@ let padding = 14
 let formatter = new DateFormatter()
 formatter.locale = "en"
 formatter.dateFormat = "MMM d"
+
+////////////////////////////////////////////////
+// Disable Debug Logs in Production ////////////
+////////////////////////////////////////////////
+
+if (!debug) {
+    logCache = false
+    logCacheUpdateStatus = false
+    logURLs = false
+    temporaryLogging = false
+}
 
 ////////////////////////////////////////////////
 // Data ////////////////////////////////////////
@@ -59,8 +81,11 @@ await loadLocalHistoryData(location.augsburg)
 await loadLocalHistoryData(location.munich)
 await loadLocalHistoryData(location.freilassing)
 
-// Uncomment the following line to log all the collected data at this point.
-debugLogRawData()
+////////////////////////////////////////////////
+// Debug Execution - DO NOT MODIFY /////////////
+////////////////////////////////////////////////
+
+printCache()
 
 ////////////////////////////////////////////////
 // Widget //////////////////////////////////////
@@ -286,18 +311,21 @@ function sum(a, b) {
 ////////////////////////////////////////////////
 async function loadLocalCaseData(location) {
     let files = FileManager.local()
-    let cachePath = files.joinPath(files.cacheDirectory(), "api-cache-local-cases-" + location)
+    let cacheName = debug ? ("debug-api-cache-local-cases-" + location) : ("api-cache-local-cases-" + location)
+    let cachePath = files.joinPath(files.cacheDirectory(), cacheName)
     let cacheExists = files.fileExists(cachePath)
     let cacheDate = cacheExists ? files.modificationDate(cachePath) : 0
 
     try {
         // Use Cache if available and last updated within specified `cacheInvalidationInMinutes
-        if (cacheExists && (today.getTime() - cacheDate.getTime()) < (cacheInvalidationInMinutes * 60 * 1000)) {
-            console.log(location + " Case Data: Using cached Data")
+        if (!debug && cacheExists && (today.getTime() - cacheDate.getTime()) < (cacheInvalidationInMinutes * 60 * 1000)) {
+            if (logCacheUpdateStatus) { console.log(location + " Case Data: Using cached Data") }
             localCaseData[location] = JSON.parse(files.readString(cachePath))
         } else {
-            console.log(location + " Case Data: Updating cached Data")
+            if (logCacheUpdateStatus) { console.log(location + " Case Data: Updating cached Data") }
             let coordinates = getCoordinates(location)
+            if (logURLs) { console.log("\nURL: Cases " + name[location]) }
+            if (logURLs) { console.log('https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_Landkreisdaten/FeatureServer/0/query?where=1%3D1&outFields=RS,GEN,cases7_per_100k&geometry=' + coordinates.longitude.toFixed(3) + '%2C' + coordinates.latitude.toFixed(3) + '&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&returnGeometry=false&outSR=4326&f=json') }
             let response = await new Request('https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_Landkreisdaten/FeatureServer/0/query?where=1%3D1&outFields=RS,GEN,cases7_per_100k&geometry=' + coordinates.longitude.toFixed(3) + '%2C' + coordinates.latitude.toFixed(3) + '&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&returnGeometry=false&outSR=4326&f=json').loadJSON()
             localCaseData[location] = response.features[0].attributes
             files.writeString(cachePath, JSON.stringify(localCaseData[location]))
@@ -305,27 +333,30 @@ async function loadLocalCaseData(location) {
     } catch (error) {
         console.error(error)
         if (cacheExists) {
-            console.log(location + " Case Data: Loading new Data failed, using cached as fallback")
+            if (logCacheUpdateStatus) { console.log(location + " Case Data: Loading new Data failed, using cached as fallback") }
             localCaseData[location] = JSON.parse(files.readString(cachePath))
         } else {
-            console.log(location + " Case Data: Loading new Data failed and no Cache found")
+            if (logCacheUpdateStatus) { console.log(location + " Case Data: Loading new Data failed and no Cache found") }
         }
     }
 }
 
 async function loadLocalHistoryData(location) {
     let files = FileManager.local()
-    let cachePath = files.joinPath(files.cacheDirectory(), "api-cache-local-history-" + location)
+    let cacheName = debug ? ("debug-api-cache-local-history-" + location) : ("api-cache-local-history-" + location)
+    let cachePath = files.joinPath(files.cacheDirectory(), cacheName)
     let cacheExists = files.fileExists(cachePath)
     let cacheDate = cacheExists ? files.modificationDate(cachePath) : 0
 
     try {
         // Use Cache if available and last updated within specified `cacheInvalidationInMinutes
-        if (cacheExists && (today.getTime() - cacheDate.getTime()) < (cacheInvalidationInMinutes * 60 * 1000)) {
-            console.log(location + " History Data: Using cached Data")
+        if (!debug && cacheExists && (today.getTime() - cacheDate.getTime()) < (cacheInvalidationInMinutes * 60 * 1000)) {
+            if (logCacheUpdateStatus) { console.log(location + " History Data: Using cached Data") }
             localHistoryData[location] = JSON.parse(files.readString(cachePath))
         } else {
-            console.log(location + " History Data: Updating cached Data")
+            if (logCacheUpdateStatus) { console.log(location + " History Data: Updating cached Data") }
+            if (logURLs) { console.log("\nURL: History " + name[location]) }
+            if (logURLs) { console.log('https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19/FeatureServer/0/query?where=IdLandkreis%20%3D%20%27' + localCaseData[location].RS + '%27%20AND%20Meldedatum%20%3E%3D%20TIMESTAMP%20%27' + getRKIDateString(-15) + '%2000%3A00%3A00%27%20AND%20Meldedatum%20%3C%3D%20TIMESTAMP%20%27' + getRKIDateString(1) + '%2000%3A00%3A00%27&outFields=Landkreis,Meldedatum,AnzahlFall&outSR=4326&f=json') }
             let response = await new Request('https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19/FeatureServer/0/query?where=IdLandkreis%20%3D%20%27' + localCaseData[location].RS + '%27%20AND%20Meldedatum%20%3E%3D%20TIMESTAMP%20%27' + getRKIDateString(-15) + '%2000%3A00%3A00%27%20AND%20Meldedatum%20%3C%3D%20TIMESTAMP%20%27' + getRKIDateString(1) + '%2000%3A00%3A00%27&outFields=Landkreis,Meldedatum,AnzahlFall&outSR=4326&f=json').loadJSON()
             // The response contains multiple entries per day. This sums them up and creates a new dictionary with each days new cases as values and the corresponding UNIX timestamp as keys.
             let aggregate = response.features.map(f => f.attributes).reduce((dict, feature) => {
@@ -345,10 +376,10 @@ async function loadLocalHistoryData(location) {
     } catch (error) {
         console.error(error)
         if (cacheExists) {
-            console.log(location + " History Data: Loading new Data failed, using cached as fallback")
+            if (logCacheUpdateStatus) { console.log(location + " History Data: Loading new Data failed, using cached as fallback") }
             localHistoryData[location] = JSON.parse(files.readString(cachePath))
         } else {
-            console.log(location + " History Data: Loading new Data failed and no Cache found")
+            if (logCacheUpdateStatus) { console.log(location + " History Data: Loading new Data failed and no Cache found") }
         }
     }
 }
@@ -373,11 +404,13 @@ function daysBetween(startDate, endDate) {
 // Debug ///////////////////////////////////////
 ////////////////////////////////////////////////
 
-function debugLogRawData() {
-    console.log("\n\n**Local Cases Data**\n")
-    console.log(JSON.stringify(localCaseData, null, 2))
-    console.log("\n\n**Local History Data**\n")
-    console.log(JSON.stringify(localHistoryData, null, 2))
+function printCache() {
+    if (logCache) {
+        console.log("\n\n**Local Cases Data**\n")
+        console.log(JSON.stringify(localCaseData, null, 2))
+        console.log("\n\n**Local History Data**\n")
+        console.log(JSON.stringify(localHistoryData, null, 2))
+    }
 }
 
 
