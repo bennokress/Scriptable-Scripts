@@ -413,7 +413,7 @@ function get7DayIncidence(country, requestedDate) {
     let startIndex = requestedDate ? daysBetween(requestedDate, today) : 0
 
     // Sum up daily new cases for the 7 days from the requested date (or today if none specified)
-    let newWeeklyCases = globalCaseData[country].cases.slice(startIndex, startIndex + 7).reduce(sum)
+    let newWeeklyCases = globalCaseData[country].cases.slice(startIndex, startIndex + 7).reduce(sum, 0)
     let population = vaccinationData[country].population
     return 100_000 * (newWeeklyCases / population)
 }
@@ -464,7 +464,8 @@ function getLocal7DayIncidence(location, requestedDate) {
     let startIndex = requestedDate ? daysBetween(requestedDate, today) : 0
 
     // Sum up daily new cases for the 7 days from the requested date (or today if none specified)
-    let newWeeklyCases = localHistoryData[location].cases.slice(startIndex, startIndex + 7).reduce(sum)
+    let newWeeklyCasesArray = localHistoryData[location].cases.slice(startIndex, startIndex + 7)
+    let newWeeklyCases = localHistoryData[location].cases.slice(startIndex, startIndex + 7).reduce(sum, 0)
     let population = localCaseData[location].EWZ
     return 100_000 * (newWeeklyCases / population)
 }
